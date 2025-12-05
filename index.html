@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Departamentos de Colombia</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f4b603;
+      font-family: Arial, sans-serif;
+    }
+
+    .titulo {
+      margin: 25px auto;
+      background: white;
+      width: 500px;
+      padding: 18px;
+      font-size: 32px;
+      text-align: center;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    #contenedor {
+      background: white;
+      width: 500px;
+      margin: auto;
+      margin-top: 10px;
+      padding: 25px;
+      border-radius: 6px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+
+    .fila {
+      background: #ffffff;
+      padding: 14px;
+      margin: 10px 0;
+      border-radius: 6px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+      display: flex;
+      justify-content: space-between;
+      font-size: 17px;
+    }
+
+    #busqueda {
+      width: 100%;
+      padding: 12px;
+      font-size: 17px;
+      border-radius: 6px;
+      border: 2px solid #ccc;
+      margin-bottom: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #666;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+
+    button:hover { background: #444; }
+
+    .subtitulo {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="titulo">Ciudad o Estado</div>
+
+  <div id="contenedor">
+
+    <input id="busqueda" placeholder="Escribe un departamento (ej: Santander)">
+    <button onclick="buscarDepartamento()">Buscar Departamento</button>
+
+    <div id="resultado_principal"></div>
+
+    <hr>
+
+    <div class="subtitulo">Todos los Departamentos:</div>
+    <div id="lista_general">Cargando...</div>
+  </div>
+
+  <script>
+
+    // FORMATO COLOMBIANO
+    function formatoCO(numero) {
+      return new Intl.NumberFormat("es-CO").format(numero);
+    }
+
+    // LISTA GENERAL (como la imagen)
+    async function cargarLista() {
+      const cont = document.getElementById("lista_general");
+      const resp = await fetch("https://api-colombia.com/api/v1/Department");
+      const lista = await resp.json();
+      cont.innerHTML = "";
+      
+      lista.forEach(dep => {
+        cont.innerHTML += `
+          <div class='fila'>
+            <span>${dep.name}</span>
+            <span>Población: ${formatoCO(dep.population)}</span>
+          </div>
+        `;
+      });
+    }
+
+    async function buscarDepartamento() {
+      const nombre = document.getElementById("busqueda").value.trim();
+      const cont = document.getElementById("resultado_principal");
+
+      if (!nombre) {
+        cont.innerHTML = "<p>Escribe un departamento.</p>";
+        return;
+      }
+
+      cont.innerHTML = "Cargando...";
+
+      try {
+        // 1️⃣ Buscar departamento
+        const urlDep = `https://api-colombia.com/api/v1/Department/name/${nombre}`;
+        const depResp = await fetch(urlDep);
+        const dep = await depResp.json();
+
+        if (!dep.id) {
+          cont.innerHTML = "<p>Departamento no encontrado</p>";
+          return;
+        }
+
+        // 2️⃣ Buscar municipios del departamento
+        const urlCities = `https://api-colombia.com/api/v1/${dep.id}/cities`;
+        const citiesResp = await fetch(urlCities);
+        const cities = await citiesResp.json();
+
+        // 3️⃣ Mostrar info completa
+        cont.innerHTML = `
+          <div class="fila"><b>Departamento:</b> ${dep.name}</div>
+          <div class="fila"><b>Población:</b> ${formatoCO(dep.population)}</div>
+          <div class="fila"><b>Superficie:</b> ${formatoCO(dep.surface)} km²</div>
+          <div class="fila"><b>Capital:</b> ${dep.cityCapital}</div>
+
+          <div class="subtitulo">Municipios:</div>
+        `;
+
+        cities.forEach(c => {
+          cont.innerHTML += `
+            <div class="fila">
+              <span>${c.name}</span>
+              <span>Población: ${formatoCO(c.population)}</span>
+            </div>
+          `;
+        });
+
+      } catch (e) {
+        cont.innerHTML = "<p>Error consultando el API.</p>";
+      }
+    }
+
+    // Cargar lista general al abrir
+    cargarLista();
+  </script>
+
+</body>
+</html>
